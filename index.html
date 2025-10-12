@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -18,8 +18,8 @@
 <body>
     <div class="container">
         <h1>Tutor de Ecuaciones Lineales</h1>
-        <p>Ingresa una ecuación lineal (ej., 4*x + 2 = 12*x - 4):</p>
-        <input type="text" id="ecuacionInput" placeholder="Ejemplo: 4*x + 2 = 12*x - 4">
+        <p>Ingresa una ecuación lineal (ej., 2 * x = 6 o 4 * x = (3 / 4) * x - 7):</p>
+        <input type="text" id="ecuacionInput" placeholder="Ejemplo: 2 * x = 6">
         <br>
         <button onclick="iniciarResolucion()">Empezar</button>
         <button onclick="siguientePaso()" id="siguienteBtn" disabled>Siguiente Paso</button>
@@ -31,15 +31,24 @@
         let pasoActual = 0;
         let ecuacion, izquierda, derecha, x, expresionSimplificada, solucion;
 
+        function normalizarEntrada(input) {
+            // Agrega espacios alrededor de '=' y normaliza fracciones
+            input = input.replace(/\s*=\s*/g, ' = ').trim();
+            input = input.replace(/(\d+)\/(\d+)/g, '($1 / $2)');
+            return input;
+        }
+
         function iniciarResolucion() {
             pasoActual = 0;
             pasos = [];
             document.getElementById('output').innerHTML = '';
             document.getElementById('siguienteBtn').disabled = false;
 
-            const input = document.getElementById('ecuacionInput').value;
+            let input = document.getElementById('ecuacionInput').value;
+            input = normalizarEntrada(input);
+
             if (!input.includes('=')) {
-                document.getElementById('output').innerHTML = '<p class="warning">Error: Ingresa una ecuación con "=" (ej., 2*x + 3 = 7).</p>';
+                document.getElementById('output').innerHTML = '<p class="warning">Error: Ingresa una ecuación con "=" (ej., 2 * x = 6).</p>';
                 return;
             }
 
@@ -47,9 +56,16 @@
                 // Separar la ecuación
                 [izquierda, derecha] = input.split('=').map(s => s.trim());
                 x = sympy.symbols('x');
+                izquierda = izquierda || '0'; // Maneja ecuaciones como '= 6'
+                derecha = derecha || '0'; // Maneja ecuaciones como '2*x ='
                 ecuacion = sympy.Eq(sympy.sympify(izquierda), sympy.sympify(derecha));
                 expresionSimplificada = sympy.sympify(izquierda).subtract(sympy.sympify(derecha));
-                solucion = sympy.solve(ecuacion, x)[0];
+                solucion = sympy.solve(ecuacion, x);
+
+                if (solucion.length === 0) {
+                    throw new Error("No se encontró solución");
+                }
+                solucion = solucion[0];
 
                 // Definir los pasos
                 pasos = [
@@ -63,7 +79,7 @@
                 document.getElementById('output').innerHTML = `Ecuación: \\[${sympy.latex(ecuacion)}\\]`;
                 MathJax.typeset();
             } catch (e) {
-                document.getElementById('output').innerHTML = `<p class="warning">Error: No pude resolver '${input}'. Usa una ecuación lineal (ej., 2*x + 3 = 7).</p>`;
+                document.getElementById('output').innerHTML = `<p class="warning">Error: No pude resolver '${input}'. Usa una ecuación lineal con * para multiplicar y espacios (ej., 2 * x = 6 o 4 * x = (3 / 4) * x - 7).</p>`;
                 document.getElementById('siguienteBtn').disabled = true;
             }
         }
