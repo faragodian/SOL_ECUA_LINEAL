@@ -1,4 +1,4 @@
-# Tutor para la Solución de una Ecuación Linel
+# Tutor para la Solución de una Ecuación Lineal
 
 **¡Bienvenido al Tutor de Ecuaciones Lineales!**  
 Este proyecto usa una **IA basada en un agente reactivo** para resolver ecuaciones lineales de forma interactiva, guiando al estudiante paso a paso como un profesor paciente. Perfecto para estudiantes de precalculo de universidad que quieren aprender a resolver ecuaciones como `2*x + 3 = 7` con explicaciones claras y advertencias sobre errores comunes (¡como olvidar los paréntesis!).
