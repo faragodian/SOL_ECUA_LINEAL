@@ -1,4 +1,4 @@
-# SOL_ECUA_LINEAL
+# Tutor para la Solución de una Ecuación Linel
 
 **¡Bienvenido al Tutor de Ecuaciones Lineales!**  
 Este proyecto usa una **IA basada en un agente reactivo** para resolver ecuaciones lineales de forma interactiva, guiando al estudiante paso a paso como un profesor paciente. Perfecto para estudiantes de precalculo de universidad que quieren aprender a resolver ecuaciones como `2*x + 3 = 7` con explicaciones claras y advertencias sobre errores comunes (¡como olvidar los paréntesis!).
@@ -14,7 +14,7 @@ Desarrollado con **SymPy.js** para cálculos matemáticos y **MathJax** para vis
 
 ## Cómo usarlo
 1. Abre la página web en un navegador:
-   - Si estás en GitHub Pages, visita [Solucion Ecuacion Lineal](https://github.com/faragodian/SOL_ECUA_LINEAL.git).
+   - Si estás en GitHub Pages, visita [Solucion Ecuacion Lineal](https://github.com/faragodian/SOL_ECUA_LINEAL/).
    - O descarga `index.html` y ábrelo localmente con Chrome/Firefox.
 2. Ingresa una ecuación lineal en el campo de texto (ej., `2*x + 3 = 7`).
 3. Haz clic en **Empezar** para ver la ecuación.
