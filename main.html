@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Tutor de Ecuaciones Lineales</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sympy/1.12/sympy.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; text-align: center; }
+        .container { max-width: 600px; margin: auto; }
+        input { padding: 10px; width: 300px; margin: 10px; }
+        button { padding: 10px 20px; margin: 5px; }
+        #output { margin-top: 20px; text-align: left; }
+        .step { margin: 10px 0; }
+        .warning { color: red; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Tutor de Ecuaciones Lineales</h1>
+        <p>Ingresa una ecuación lineal (ej., 4*x + 2 = 12*x - 4):</p>
+        <input type="text" id="ecuacionInput" placeholder="Ejemplo: 4*x + 2 = 12*x - 4">
+        <br>
+        <button onclick="iniciarResolucion()">Empezar</button>
+        <button onclick="siguientePaso()" id="siguienteBtn" disabled>Siguiente Paso</button>
+        <div id="output"></div>
+    </div>
+
+    <script>
+        let pasos = [];
+        let pasoActual = 0;
+        let ecuacion, izquierda, derecha, x, expresionSimplificada, solucion;
+
+        function iniciarResolucion() {
+            pasoActual = 0;
+            pasos = [];
+            document.getElementById('output').innerHTML = '';
+            document.getElementById('siguienteBtn').disabled = false;
+
+            const input = document.getElementById('ecuacionInput').value;
+            if (!input.includes('=')) {
+                document.getElementById('output').innerHTML = '<p class="warning">Error: Ingresa una ecuación con "=" (ej., 2*x + 3 = 7).</p>';
+                return;
+            }
+
+            try {
+                // Separar la ecuación
+                [izquierda, derecha] = input.split('=').map(s => s.trim());
+                x = sympy.symbols('x');
+                ecuacion = sympy.Eq(sympy.sympify(izquierda), sympy.sympify(derecha));
+                expresionSimplificada = sympy.sympify(izquierda).subtract(sympy.sympify(derecha));
+                solucion = sympy.solve(ecuacion, x)[0];
+
+                // Definir los pasos
+                pasos = [
+                    `Paso 1: Restamos (${derecha}) a ambos lados para llevar todo a un lado: \\[${izquierda} - (${derecha}) = 0\\]. <span class="warning">¡Cuidado! Usa paréntesis al restar para no cambiar signos.</span>`,
+                    `Paso 2: Simplificamos: \\[${izquierda} - (${derecha}) = ${sympy.latex(expresionSimplificada)}\\]`,
+                    `Paso 3: Igualamos a cero: \\[${sympy.latex(expresionSimplificada)} = 0\\]`,
+                    `Paso 4: Despejamos x: \\[${sympy.latex(sympy.Eq(expresionSimplificada, 0))} \\implies x = ${sympy.latex(solucion)}\\]`
+                ];
+
+                // Mostrar la ecuación inicial
+                document.getElementById('output').innerHTML = `Ecuación: \\[${sympy.latex(ecuacion)}\\]`;
+                MathJax.typeset();
+            } catch (e) {
+                document.getElementById('output').innerHTML = `<p class="warning">Error: No pude resolver '${input}'. Usa una ecuación lineal (ej., 2*x + 3 = 7).</p>`;
+                document.getElementById('siguienteBtn').disabled = true;
+            }
+        }
+
+        function siguientePaso() {
+            if (pasoActual < pasos.length) {
+                document.getElementById('output').innerHTML += `<div class="step">${pasos[pasoActual]}</div>`;
+                pasoActual++;
+                MathJax.typeset();
+                if (pasoActual === pasos.length) {
+                    document.getElementById('siguienteBtn').disabled = true;
+                }
+            }
+        }
+    </script>
+</body>
+</html>
