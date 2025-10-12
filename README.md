@@ -14,7 +14,7 @@ Desarrollado con **SymPy.js** para cálculos matemáticos y **MathJax** para vis
 
 ## Cómo usarlo
 1. Abre la página web en un navegador:
-   - Si estás en GitHub Pages, visita [Solucion Ecuacion Lineal](https://github.com/faragodian/SOL_ECUA_LINEAL/).
+   - Si estás en GitHub Pages, visita [Solucion Ecuacion Lineal](https://github.com/faragodian/SOL_ECUA_LINEAL.git).
    - O descarga `index.html` y ábrelo localmente con Chrome/Firefox.
 2. Ingresa una ecuación lineal en el campo de texto (ej., `2*x + 3 = 7`).
 3. Haz clic en **Empezar** para ver la ecuación.
