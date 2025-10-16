@@ -28,12 +28,10 @@
   </style>
 
   <!-- nerdamer: álgebra simbólica en JS (cliente) -->
- <!-- nerdamer (álgebra simbólica en JS) -->
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/nerdamer/1.1.13/nerdamer.core.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/nerdamer/1.1.13/Algebra.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/nerdamer/1.1.13/Calculus.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/nerdamer/1.1.13/Solve.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/nerdamer/1.1.13/nerdamer.core.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/nerdamer/1.1.13/Algebra.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/nerdamer/1.1.13/Calculus.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/nerdamer/1.1.13/Solve.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
 <body>
   <div class="wrap">
@@ -61,168 +59,178 @@
   </div>
 
 <script>
-/* ============================
-   Utilidades de “agente”
-   ============================ */
-const agente = {
-  pensar(msg){
-    return (msg.includes('=')) ? {accion:'resolver'} : {accion:'pedir_ecuacion'};
-  },
-  interactuar(msg){
-    const plan = this.pensar(msg);
-    if (plan.accion === 'resolver') return resolverConPasos(msg);
-    return 'Por favor escribe una ecuación con signo "=". Ej.: 5x + 7 = 2x - 8';
+/* =================================================================
+   IMPORTANTE: Esperar a que el DOM esté listo (y nerdamer cargado)
+   ================================================================= */
+window.addEventListener('DOMContentLoaded', () => {
+  // Diagnóstico por si nerdamer no cargó (bloqueador de contenido, red, etc.)
+  if (typeof nerdamer === 'undefined') {
+    const el = document.getElementById('salida');
+    if (el) el.innerHTML = '⚠️ No se pudo cargar Nerdamer desde cdnjs. Revisa conexión o bloqueadores y recarga.';
+    console.error('Nerdamer no está definido: revise las etiquetas <script> o intente sin bloqueadores.');
+    return;
   }
-};
 
-/* ============================
-   Parseo y helper de álgebra
-   ============================ */
-function explicitMul(s){
-  // Inserta multiplicaciones implícitas: 3a->3*a, )a->)*a, a(->a*(, 2(a+1)->2*(a+1)
-  s = s.replace(/(\d)([a-zA-Z])/g, '$1*$2');
-  s = s.replace(/\)([a-zA-Z])/g, ')*$1');
-  s = s.replace(/([a-zA-Z])\(/g, '$1*(');
-  s = s.replace(/(\d)\(/g, '$1*(');
-  return s;
-}
-function detectVar(eq){
-  const m = eq.match(/[a-zA-Z]/g);
-  return (m && m.length) ? m[0] : 'x';
-}
-function limpiarEntrada(raw){
-  // quita espacios, cambia coma por punto, normaliza potencias, multip. implícita
-  let s = raw.replace(/\s+/g,'').replace(/,/g,'.');
-  s = s.replace(/\*\*/g,'^'); // nerdamer usa ^
-  s = explicitMul(s);
-  return s;
-}
-
-/* ============================
-   Coeficientes lineales por derivada y evaluación
-   Para una expresión f(v) = m*v + b:
-     m = f'(0)   (derivada en 0)
-     b = f(0)
-   ============================ */
-function coefLineales(exprStr, variable){
-  // Usamos buildFunction para evaluar en 0 con precisión JS
-  const f = nerdamer(exprStr).buildFunction([variable]);
-  const df = nerdamer.diff(exprStr, variable).buildFunction([variable]);
-  const b = Number(f(0));     // término independiente
-  const m = Number(df(0));    // coeficiente de la variable
-  return {m, b};
-}
-
-/* ============================
-   TUTOR: resolver con pasos
-   ============================ */
-function resolverConPasos(input){
-  const salida = [];
-  try{
-    if (!input.includes('=')) throw new Error('No se encontró "=" en la entrada.');
-
-    // 1) Normalizar entrada y variable
-    const original = input;
-    let eq = limpiarEntrada(input);
-    const variable = detectVar(eq);
-
-    salida.push(`Ecuación: ${original}`);
-    salida.push(`Variable detectada: ${variable}`);
-
-    // 2) Separar lados
-    const [lhs, rhs] = eq.split('=');
-    const lhsExp = nerdamer.expand(lhs).toString();
-    const rhsExp = nerdamer.expand(rhs).toString();
-    salida.push(`Expandir ambos lados:`);
-    salida.push(`  Lado izq.: ${lhsExp}`);
-    salida.push(`  Lado der.: ${rhsExp}`);
-
-    // 3) Extraer coeficientes lineales (m*v + b) en cada lado
-    const {m: mL, b: bL} = coefLineales(lhsExp, variable);
-    const {m: mR, b: bR} = coefLineales(rhsExp, variable);
-    salida.push(`Reescritura lineal aproximada:`);
-    salida.push(`  Izquierda  ≈ (${mL})*${variable} + (${bL})`);
-    salida.push(`  Derecha    ≈ (${mR})*${variable} + (${bR})`);
-
-    // 4) Llevar términos: (mL - mR)*v = (bR - bL)
-    const mDiff = mL - mR;
-    const bDiff = bR - bL;
-    salida.push(`Pasar términos de ${variable} a la izquierda y constantes a la derecha:`);
-    salida.push(`  (${mL} - ${mR})*${variable} = (${bR} - ${bL})`);
-    salida.push(`  ${mDiff}*${variable} = ${bDiff}`);
-
-    // 5) Casos especiales
-    if (Math.abs(mDiff) < 1e-12 && Math.abs(bDiff) < 1e-12){
-      salida.push(`\n<span class="ok">Conclusión:</span> La igualdad se cumple para todo valor de ${variable}.`);
-      salida.push(`<strong>Infinitas soluciones</strong>.`);
-      return salida.join('\n');
+  /* ============================
+     Utilidades de “agente”
+     ============================ */
+  const agente = {
+    pensar(msg){
+      return (msg.includes('=')) ? {accion:'resolver'} : {accion:'pedir_ecuacion'};
+    },
+    interactuar(msg){
+      const plan = this.pensar(msg);
+      if (plan.accion === 'resolver') return resolverConPasos(msg);
+      return 'Por favor escribe una ecuación con signo "=". Ej.: 5x + 7 = 2x - 8';
     }
-    if (Math.abs(mDiff) < 1e-12 && Math.abs(bDiff) >= 1e-12){
-      salida.push(`\n<span class="err">Conclusión:</span> Se obtiene 0*${variable} = ${bDiff}, que es imposible.`);
-      salida.push(`<strong>Sin solución</strong>.`);
+  };
+
+  /* ============================
+     Parseo y helper de álgebra
+     ============================ */
+  function explicitMul(s){
+    // Inserta multiplicaciones implícitas: 3a->3*a, )a->)*a, a(->a*(, 2(a+1)->2*(a+1)
+    s = s.replace(/(\d)([a-zA-Z])/g, '$1*$2');
+    s = s.replace(/\)([a-zA-Z])/g, ')*$1');
+    s = s.replace(/([a-zA-Z])\(/g, '$1*(');
+    s = s.replace(/(\d)\(/g, '$1*(');
+    return s;
+  }
+  function detectVar(eq){
+    const m = eq.match(/[a-zA-Z]/g);
+    return (m && m.length) ? m[0] : 'x';
+  }
+  function limpiarEntrada(raw){
+    // quita espacios, cambia coma por punto, normaliza potencias, multip. implícita
+    let s = raw.replace(/\s+/g,'').replace(/,/g,'.');
+    s = s.replace(/\*\*/g,'^'); // nerdamer usa ^
+    s = explicitMul(s);
+    return s;
+  }
+
+  /* ============================
+     Coeficientes lineales (f(v)=m*v+b)
+     ============================ */
+  function coefLineales(exprStr, variable){
+    const f  = nerdamer(exprStr).buildFunction([variable]);
+    const df = nerdamer.diff(exprStr, variable).buildFunction([variable]);
+    const b = Number(f(0));     // término independiente
+    const m = Number(df(0));    // coeficiente de la variable
+    return {m, b};
+  }
+
+  /* ============================
+     TUTOR: resolver con pasos
+     ============================ */
+  function resolverConPasos(input){
+    const salida = [];
+    try{
+      if (!input.includes('=')) throw new Error('No se encontró "=" en la entrada.');
+
+      // 1) Normalizar entrada y variable
+      const original = input;
+      let eq = limpiarEntrada(input);
+      const variable = detectVar(eq);
+
+      salida.push(`Ecuación: ${original}`);
+      salida.push(`Variable detectada: ${variable}`);
+
+      // 2) Separar lados y expandir
+      const [lhs, rhs] = eq.split('=');
+      const lhsExp = nerdamer.expand(lhs).toString();
+      const rhsExp = nerdamer.expand(rhs).toString();
+      salida.push(`Expandir ambos lados:`);
+      salida.push(`  Lado izq.: ${lhsExp}`);
+      salida.push(`  Lado der.: ${rhsExp}`);
+
+      // 3) Coeficientes lineales (m*v + b)
+      const {m: mL, b: bL} = coefLineales(lhsExp, variable);
+      const {m: mR, b: bR} = coefLineales(rhsExp, variable);
+      salida.push(`Reescritura lineal aproximada:`);
+      salida.push(`  Izquierda  ≈ (${mL})*${variable} + (${bL})`);
+      salida.push(`  Derecha    ≈ (${mR})*${variable} + (${bR})`);
+
+      // 4) Llevar términos: (mL - mR)*v = (bR - bL)
+      const mDiff = mL - mR;
+      const bDiff = bR - bL;
+      salida.push(`Pasar términos de ${variable} a la izq. y constantes a la der.:`);
+      salida.push(`  (${mL} - ${mR})*${variable} = (${bR} - ${bL})`);
+      salida.push(`  ${mDiff}*${variable} = ${bDiff}`);
+
+      // 5) Casos especiales
+      if (Math.abs(mDiff) < 1e-12 && Math.abs(bDiff) < 1e-12){
+        salida.push(`\n<span class="ok">Conclusión:</span> La igualdad se cumple para todo valor de ${variable}.`);
+        salida.push(`<strong>Infinitas soluciones</strong>.`);
+        return salida.join('\n');
+      }
+      if (Math.abs(mDiff) < 1e-12 && Math.abs(bDiff) >= 1e-12){
+        salida.push(`\n<span class="err">Conclusión:</span> Se obtiene 0*${variable} = ${bDiff}, que es imposible.`);
+        salida.push(`<strong>Sin solución</strong>.`);
+        return salida.join('\n');
+      }
+
+      // 6) Despeje
+      const solNum = bDiff / mDiff;
+
+      // Sol exacta simbólica
+      const eqExacta = `${lhs}=${rhs}`;
+      const soluciones = nerdamer.solve(eqExacta, variable);
+      const sols = Array.isArray(soluciones) ? soluciones : [soluciones];
+      const solExacta = sols.length ? sols[0].toString() : (''+solNum);
+
+      salida.push(`Dividir ambos lados por ${mDiff}:`);
+      salida.push(`  ${variable} = ${bDiff} / ${mDiff}`);
+      salida.push(`  ${variable} ≈ ${Number(solNum).toPrecision(8)}`);
+      salida.push(`\n<span class="ok">Solución exacta:</span> ${variable} = ${solExacta}`);
+
+      // 7) Verificación numérica
+      const check = verificar(eqExacta, variable, solExacta);
+      salida.push(`\nVerificación numérica: ${check ? '✅ correcta' : '⚠️ revisar'}`);
+
       return salida.join('\n');
+    } catch (e){
+      return `<span class="err">Error:</span> ${e.message}\n` +
+             `Asegúrate de escribir una ecuación con "=". Ej.: 3a - (4/5) = -(4/5)*a + 2`;
     }
-
-    // 6) Despeje
-    const solNum = bDiff / mDiff;
-    // Sol exacta simbólica (apoyándonos en nerdamer.solve por si hay fracciones)
-    const eqExacta = `${lhs}=${rhs}`;
-    const soluciones = nerdamer.solve(eqExacta, variable);
-    const sols = Array.isArray(soluciones) ? soluciones : [soluciones];
-    const solExacta = sols.length ? sols[0].toString() : (''+solNum);
-
-    salida.push(`Dividir ambos lados por ${mDiff}:`);
-    salida.push(`  ${variable} = ${bDiff} / ${mDiff}`);
-    salida.push(`  ${variable} ≈ ${Number(solNum).toPrecision(8)}`);
-    salida.push(`\n<span class="ok">Solución exacta:</span> ${variable} = ${solExacta}`);
-
-    // 7) Verificación rápida
-    const check = verificar(eqExacta, variable, solExacta);
-    salida.push(`\nVerificación numérica: ${check ? '✅ correcta' : '⚠️ revisar'}`);
-
-    return salida.join('\n');
-  } catch (e){
-    return `<span class="err">Error:</span> ${e.message}\n` +
-           `Asegúrate de escribir una ecuación con "=". Ej.: 3a - (4/5) = -(4/5)*a + 2`;
   }
-}
 
-/* ============================
-   Verificación sustituyendo la solución
-   ============================ */
-function verificar(eq, variable, solStr){
-  try{
-    const [L, R] = eq.split('=');
-    const fL = nerdamer(L).buildFunction([variable]);
-    const fR = nerdamer(R).buildFunction([variable]);
+  /* ============================
+     Verificación por sustitución
+     ============================ */
+  function verificar(eq, variable, solStr){
+    try{
+      const [L, R] = eq.split('=');
+      const fL = nerdamer(L).buildFunction([variable]);
+      const fR = nerdamer(R).buildFunction([variable]);
 
-    // Evaluar solución “exacta”: primero intenta evaluar como número; si no, evalúa nerdamer(sol)
-    let val;
-    try { val = Number(nerdamer(solStr).evaluate().text()); }
-    catch { val = Number(solStr); }
-    if (!isFinite(val)) return true; // si la solución no numérica exacta, asumimos correcto por simbólico
+      let val;
+      try { val = Number(nerdamer(solStr).evaluate().text()); }
+      catch { val = Number(solStr); }
+      if (!isFinite(val)) return true;
 
-    const l = fL(val);
-    const r = fR(val);
-    return Math.abs(l - r) < 1e-7;
-  } catch {
-    return true;
+      const l = fL(val);
+      const r = fR(val);
+      return Math.abs(l - r) < 1e-7;
+    } catch {
+      return true;
+    }
   }
-}
 
-/* ============================
-   UI
-   ============================ */
-const entrada = document.getElementById('entrada');
-const salida  = document.getElementById('salida');
+  /* ============================
+     UI
+     ============================ */
+  const entrada = document.getElementById('entrada');
+  const salida  = document.getElementById('salida');
 
-document.getElementById('btn').addEventListener('click', () => {
-  const msg = entrada.value.trim();
-  if (!msg) { salida.innerHTML = 'Escribe una ecuación primero ��'; return; }
-  salida.innerHTML = agente.interactuar(msg);
+  document.getElementById('btn').addEventListener('click', () => {
+    const msg = entrada.value.trim();
+    if (!msg) { salida.innerHTML = 'Escribe una ecuación primero ��'; return; }
+    salida.innerHTML = agente.interactuar(msg);
+  });
+
+  // Para que los chips funcionen (onclick="ej('...')")
+  window.ej = (t) => { entrada.value = t; };
 });
-
-function ej(t){ entrada.value = t; }
 </script>
 </body>
 </html>
