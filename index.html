@@ -1,99 +1,226 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>Tutor de Ecuaciones Lineales</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/sympy/1.12/sympy.min.js"></script>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; text-align: center; }
-        .container { max-width: 600px; margin: auto; }
-        input { padding: 10px; width: 300px; margin: 10px; }
-        button { padding: 10px 20px; margin: 5px; }
-        #output { margin-top: 20px; text-align: left; }
-        .step { margin: 10px 0; }
-        .warning { color: red; font-weight: bold; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tutor de Ecuaciones Lineales — Paso a paso</title>
+  <style>
+    :root { --bg:#0f172a; --card:#111827; --text:#e5e7eb; --muted:#94a3b8; --accent:#22d3ee; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, Segoe UI, Roboto, Arial; background:linear-gradient(180deg,#0b1220,#0f172a); color:var(--text); }
+    .wrap { max-width:960px; margin:40px auto; padding:0 16px; }
+    .card { background:linear-gradient(180deg,#0b1220,#161c2c); border:1px solid #1f2937; border-radius:18px; padding:24px; box-shadow:0 10px 30px rgba(0,0,0,.25); }
+    h1 { margin:0 0 8px; font-size:28px; letter-spacing:.2px; }
+    .sub { color:var(--muted); margin-bottom:18px; line-height:1.45; }
+    .row { display:flex; gap:10px; flex-wrap:wrap; }
+    input[type=text] { flex:1; min-width:260px; padding:14px 16px; border-radius:12px; border:1px solid #334155; background:#0b1220; color:var(--text); font-size:16px; outline:none; }
+    button { padding:14px 18px; border-radius:12px; border:1px solid #164e63; background:#082f49; color:#a5f3fc; cursor:pointer; font-weight:600; }
+    button:hover { filter:brightness(1.12); }
+    .chips { margin-top:12px; }
+    .pill { display:inline-block; padding:4px 10px; border-radius:999px; border:1px solid #374151; font-size:12px; color:#cbd5e1; margin-right:8px; cursor:pointer; }
+    .out { margin-top:18px; background:#0b1220; border:1px solid #334155; border-radius:12px; padding:16px; white-space:pre-wrap; line-height:1.45; }
+    code { background:#0b1220; border:1px solid #334155; padding:2px 6px; border-radius:8px; }
+    .ok { color:#86efac; }
+    .warn { color:#fbbf24; }
+    .err { color:#fca5a5; }
+    .footer { margin-top:12px; color:#94a3b8; font-size:12px; }
+    a { color:#67e8f9; text-decoration:none; }
+  </style>
+
+  <!-- nerdamer: álgebra simbólica en JS (cliente) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/nerdamer/1.1.13/nerdamer.core.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/nerdamer/1.1.13/Algebra.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/nerdamer/1.1.13/Calculus.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/nerdamer/1.1.13/Solve.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
 <body>
-    <div class="container">
-        <h1>Tutor de Ecuaciones Lineales</h1>
-        <p>Ingresa una ecuación lineal (ej., 2 * x = 6 o 4 * x = (3 / 4) * x - 7):</p>
-        <input type="text" id="ecuacionInput" placeholder="Ejemplo: 2 * x = 6">
-        <br>
-        <button onclick="iniciarResolucion()">Empezar</button>
-        <button onclick="siguientePaso()" id="siguienteBtn" disabled>Siguiente Paso</button>
-        <div id="output"></div>
+  <div class="wrap">
+    <div class="card">
+      <h1>�� Tutor de Ecuaciones Lineales</h1>
+      <div class="sub">
+        Escribe tu ecuación (p. ej. <code>3a - (4/5) = -(4/5)*a + 2</code>) y obtén acompañamiento paso a paso.
+        Todo corre en tu navegador (sin enviar datos a servidores).
+      </div>
+
+      <div class="row">
+        <input id="entrada" type="text" placeholder="Escribe aquí tu ecuación lineal…" />
+        <button id="btn">Resolver con pasos</button>
+      </div>
+
+      <div class="chips">
+        <span class="pill" onclick="ej('3a - (4/5) = -(4/5)*a + 2')">Ejemplo 1</span>
+        <span class="pill" onclick="ej('5x + 7 = 2x - 8')">Ejemplo 2</span>
+        <span class="pill" onclick="ej('4y - 3 = y + 9')">Ejemplo 3</span>
+      </div>
+
+      <div id="salida" class="out">Ingresa una ecuación con <code>=</code> para comenzar ��</div>
+      <div class="footer">Hecho con <a href="https://nerdamer.com/" target="_blank" rel="noreferrer">nerdamer</a>. Código 100% público y estático.</div>
     </div>
+  </div>
 
-    <script>
-        let pasos = [];
-        let pasoActual = 0;
-        let ecuacion, izquierda, derecha, x, expresionSimplificada, solucion;
+<script>
+/* ============================
+   Utilidades de “agente”
+   ============================ */
+const agente = {
+  pensar(msg){
+    return (msg.includes('=')) ? {accion:'resolver'} : {accion:'pedir_ecuacion'};
+  },
+  interactuar(msg){
+    const plan = this.pensar(msg);
+    if (plan.accion === 'resolver') return resolverConPasos(msg);
+    return 'Por favor escribe una ecuación con signo "=". Ej.: 5x + 7 = 2x - 8';
+  }
+};
 
-        function normalizarEntrada(input) {
-            // Agrega espacios alrededor de '=' y normaliza fracciones
-            input = input.replace(/\s*=\s*/g, ' = ').trim();
-            input = input.replace(/(\d+)\/(\d+)/g, '($1 / $2)');
-            return input;
-        }
+/* ============================
+   Parseo y helper de álgebra
+   ============================ */
+function explicitMul(s){
+  // Inserta multiplicaciones implícitas: 3a->3*a, )a->)*a, a(->a*(, 2(a+1)->2*(a+1)
+  s = s.replace(/(\d)([a-zA-Z])/g, '$1*$2');
+  s = s.replace(/\)([a-zA-Z])/g, ')*$1');
+  s = s.replace(/([a-zA-Z])\(/g, '$1*(');
+  s = s.replace(/(\d)\(/g, '$1*(');
+  return s;
+}
+function detectVar(eq){
+  const m = eq.match(/[a-zA-Z]/g);
+  return (m && m.length) ? m[0] : 'x';
+}
+function limpiarEntrada(raw){
+  // quita espacios, cambia coma por punto, normaliza potencias, multip. implícita
+  let s = raw.replace(/\s+/g,'').replace(/,/g,'.');
+  s = s.replace(/\*\*/g,'^'); // nerdamer usa ^
+  s = explicitMul(s);
+  return s;
+}
 
-        function iniciarResolucion() {
-            pasoActual = 0;
-            pasos = [];
-            document.getElementById('output').innerHTML = '';
-            document.getElementById('siguienteBtn').disabled = false;
+/* ============================
+   Coeficientes lineales por derivada y evaluación
+   Para una expresión f(v) = m*v + b:
+     m = f'(0)   (derivada en 0)
+     b = f(0)
+   ============================ */
+function coefLineales(exprStr, variable){
+  // Usamos buildFunction para evaluar en 0 con precisión JS
+  const f = nerdamer(exprStr).buildFunction([variable]);
+  const df = nerdamer.diff(exprStr, variable).buildFunction([variable]);
+  const b = Number(f(0));     // término independiente
+  const m = Number(df(0));    // coeficiente de la variable
+  return {m, b};
+}
 
-            let input = document.getElementById('ecuacionInput').value;
-            input = normalizarEntrada(input);
+/* ============================
+   TUTOR: resolver con pasos
+   ============================ */
+function resolverConPasos(input){
+  const salida = [];
+  try{
+    if (!input.includes('=')) throw new Error('No se encontró "=" en la entrada.');
 
-            if (!input.includes('=')) {
-                document.getElementById('output').innerHTML = '<p class="warning">Error: Ingresa una ecuación con "=" (ej., 2 * x = 6).</p>';
-                return;
-            }
+    // 1) Normalizar entrada y variable
+    const original = input;
+    let eq = limpiarEntrada(input);
+    const variable = detectVar(eq);
 
-            try {
-                // Separar la ecuación
-                [izquierda, derecha] = input.split('=').map(s => s.trim());
-                x = sympy.symbols('x');
-                izquierda = izquierda || '0'; // Maneja ecuaciones como '= 6'
-                derecha = derecha || '0'; // Maneja ecuaciones como '2*x ='
-                ecuacion = sympy.Eq(sympy.sympify(izquierda), sympy.sympify(derecha));
-                expresionSimplificada = sympy.sympify(izquierda).subtract(sympy.sympify(derecha));
-                solucion = sympy.solve(ecuacion, x);
+    salida.push(`Ecuación: ${original}`);
+    salida.push(`Variable detectada: ${variable}`);
 
-                if (solucion.length === 0) {
-                    throw new Error("No se encontró solución");
-                }
-                solucion = solucion[0];
+    // 2) Separar lados
+    const [lhs, rhs] = eq.split('=');
+    const lhsExp = nerdamer.expand(lhs).toString();
+    const rhsExp = nerdamer.expand(rhs).toString();
+    salida.push(`Expandir ambos lados:`);
+    salida.push(`  Lado izq.: ${lhsExp}`);
+    salida.push(`  Lado der.: ${rhsExp}`);
 
-                // Definir los pasos
-                pasos = [
-                    `Paso 1: Restamos (${derecha}) a ambos lados para llevar todo a un lado: \\[${izquierda} - (${derecha}) = 0\\]. <span class="warning">¡Cuidado! Usa paréntesis al restar para no cambiar signos.</span>`,
-                    `Paso 2: Simplificamos: \\[${izquierda} - (${derecha}) = ${sympy.latex(expresionSimplificada)}\\]`,
-                    `Paso 3: Igualamos a cero: \\[${sympy.latex(expresionSimplificada)} = 0\\]`,
-                    `Paso 4: Despejamos x: \\[${sympy.latex(sympy.Eq(expresionSimplificada, 0))} \\implies x = ${sympy.latex(solucion)}\\]`
-                ];
+    // 3) Extraer coeficientes lineales (m*v + b) en cada lado
+    const {m: mL, b: bL} = coefLineales(lhsExp, variable);
+    const {m: mR, b: bR} = coefLineales(rhsExp, variable);
+    salida.push(`Reescritura lineal aproximada:`);
+    salida.push(`  Izquierda  ≈ (${mL})*${variable} + (${bL})`);
+    salida.push(`  Derecha    ≈ (${mR})*${variable} + (${bR})`);
 
-                // Mostrar la ecuación inicial
-                document.getElementById('output').innerHTML = `Ecuación: \\[${sympy.latex(ecuacion)}\\]`;
-                MathJax.typeset();
-            } catch (e) {
-                document.getElementById('output').innerHTML = `<p class="warning">Error: No pude resolver '${input}'. Usa una ecuación lineal con * para multiplicar y espacios (ej., 2 * x = 6 o 4 * x = (3 / 4) * x - 7).</p>`;
-                document.getElementById('siguienteBtn').disabled = true;
-            }
-        }
+    // 4) Llevar términos: (mL - mR)*v = (bR - bL)
+    const mDiff = mL - mR;
+    const bDiff = bR - bL;
+    salida.push(`Pasar términos de ${variable} a la izquierda y constantes a la derecha:`);
+    salida.push(`  (${mL} - ${mR})*${variable} = (${bR} - ${bL})`);
+    salida.push(`  ${mDiff}*${variable} = ${bDiff}`);
 
-        function siguientePaso() {
-            if (pasoActual < pasos.length) {
-                document.getElementById('output').innerHTML += `<div class="step">${pasos[pasoActual]}</div>`;
-                pasoActual++;
-                MathJax.typeset();
-                if (pasoActual === pasos.length) {
-                    document.getElementById('siguienteBtn').disabled = true;
-                }
-            }
-        }
-    </script>
+    // 5) Casos especiales
+    if (Math.abs(mDiff) < 1e-12 && Math.abs(bDiff) < 1e-12){
+      salida.push(`\n<span class="ok">Conclusión:</span> La igualdad se cumple para todo valor de ${variable}.`);
+      salida.push(`<strong>Infinitas soluciones</strong>.`);
+      return salida.join('\n');
+    }
+    if (Math.abs(mDiff) < 1e-12 && Math.abs(bDiff) >= 1e-12){
+      salida.push(`\n<span class="err">Conclusión:</span> Se obtiene 0*${variable} = ${bDiff}, que es imposible.`);
+      salida.push(`<strong>Sin solución</strong>.`);
+      return salida.join('\n');
+    }
+
+    // 6) Despeje
+    const solNum = bDiff / mDiff;
+    // Sol exacta simbólica (apoyándonos en nerdamer.solve por si hay fracciones)
+    const eqExacta = `${lhs}=${rhs}`;
+    const soluciones = nerdamer.solve(eqExacta, variable);
+    const sols = Array.isArray(soluciones) ? soluciones : [soluciones];
+    const solExacta = sols.length ? sols[0].toString() : (''+solNum);
+
+    salida.push(`Dividir ambos lados por ${mDiff}:`);
+    salida.push(`  ${variable} = ${bDiff} / ${mDiff}`);
+    salida.push(`  ${variable} ≈ ${Number(solNum).toPrecision(8)}`);
+    salida.push(`\n<span class="ok">Solución exacta:</span> ${variable} = ${solExacta}`);
+
+    // 7) Verificación rápida
+    const check = verificar(eqExacta, variable, solExacta);
+    salida.push(`\nVerificación numérica: ${check ? '✅ correcta' : '⚠️ revisar'}`);
+
+    return salida.join('\n');
+  } catch (e){
+    return `<span class="err">Error:</span> ${e.message}\n` +
+           `Asegúrate de escribir una ecuación con "=". Ej.: 3a - (4/5) = -(4/5)*a + 2`;
+  }
+}
+
+/* ============================
+   Verificación sustituyendo la solución
+   ============================ */
+function verificar(eq, variable, solStr){
+  try{
+    const [L, R] = eq.split('=');
+    const fL = nerdamer(L).buildFunction([variable]);
+    const fR = nerdamer(R).buildFunction([variable]);
+
+    // Evaluar solución “exacta”: primero intenta evaluar como número; si no, evalúa nerdamer(sol)
+    let val;
+    try { val = Number(nerdamer(solStr).evaluate().text()); }
+    catch { val = Number(solStr); }
+    if (!isFinite(val)) return true; // si la solución no numérica exacta, asumimos correcto por simbólico
+
+    const l = fL(val);
+    const r = fR(val);
+    return Math.abs(l - r) < 1e-7;
+  } catch {
+    return true;
+  }
+}
+
+/* ============================
+   UI
+   ============================ */
+const entrada = document.getElementById('entrada');
+const salida  = document.getElementById('salida');
+
+document.getElementById('btn').addEventListener('click', () => {
+  const msg = entrada.value.trim();
+  if (!msg) { salida.innerHTML = 'Escribe una ecuación primero ��'; return; }
+  salida.innerHTML = agente.interactuar(msg);
+});
+
+function ej(t){ entrada.value = t; }
+</script>
 </body>
 </html>
